@@ -1,7 +1,6 @@
 ConstantF = function(init_parameters, time, event, IV, 
     Covariates, D_status, stime)
 {
-  # stime contains switching time
   # Covariates must be matrix
   # setting
   #----------------------------------------------------
@@ -10,19 +9,6 @@ ConstantF = function(init_parameters, time, event, IV,
   k = length(stime)
   betaD = init_parameters[1]
   beta = init_parameters[-1]
-  time.order = order(-time)
-  X = time[time.order]
-  
-  # tie.last = tie.first = 1:n
-  # for(i in 2:n)
-  # {
-  #   if(dX[i-1]==0)
-  #   {
-  #     tie.first[i] = tie.first[i-1]
-  #     tie.last[tie.first[i]:i] = i
-  #   }
-  # }
-  # SY = cumsum(rep(1:n))[tie.last]
   
   # calculus
   #----------------------------------------------------
@@ -44,9 +30,9 @@ ConstantF = function(init_parameters, time, event, IV,
         drop(D_status[, j-1]*betaD*(stime[j] - stime[j-1]))
       if(betaD != 0){
         int_expbetaD[, j] = ifelse(D_status[, j-1] == 1, 
-                                   (exp(betaD*stime[j]) - 
-                                      exp(betaD*stime[j-1]))/betaD, 
-                                   stime[j] - stime[j-1])
+                                   (exp(int_betaD[, j]) - 
+                                      exp(int_betaD[, j-1]))/betaD, 
+                                   (stime[j] - stime[j-1])*exp(int_betaD[, j]))
       } else {
         int_expbetaD[, j] = stime[j] - stime[j-1]
       }
@@ -75,19 +61,6 @@ ConstantF_est = function(init_parameters, time, event, IV,
   
   n = length(time)
   k = length(stime)
-  time.order = order(-time)
-  X = time[time.order]
-  
-  # tie.last = tie.first = 1:n
-  # for(i in 2:n)
-  # {
-  #   if(dX[i-1]==0)
-  #   {
-  #     tie.first[i] = tie.first[i-1]
-  #     tie.last[tie.first[i]:i] = i
-  #   }
-  # }
-  # SY = cumsum(rep(1:n))[tie.last]
   
   # calculus
   #----------------------------------------------------
@@ -123,12 +96,12 @@ ConstantF_est = function(init_parameters, time, event, IV,
           drop(D_status[, j-1]*betaD*(stime[j] - stime[j-1]))
         if(betaD != 0){
           int_expbetaD[, j] = ifelse(D_status[, j-1] == 1, 
-                                     (exp(betaD*stime[j]) - 
-                                        exp(betaD*stime[j-1]))/betaD, 
-                                     stime[j] - stime[j-1])
+                                     (exp(int_betaD[, j]) - 
+                                        exp(int_betaD[, j-1]))/betaD, 
+                                     (stime[j] - stime[j-1])*exp(int_betaD[,j]))
           int_texpbetaD[, j] = ifelse(D_status[, j-1] == 1,
-                        (stime[j]*exp(betaD*stime[j])-
-                           stime[j-1]*exp(betaD*stime[j-1]))/betaD,
+                        (int_D[, j]*exp(int_betaD[, j])-
+                           int_D[, j-1]*exp(int_betaD[, j-1]))/betaD,
                         0) - int_expbetaD[, j]
         } else {
           int_expbetaD[, j] = stime[j] - stime[j-1]
@@ -153,11 +126,12 @@ ConstantF_est = function(init_parameters, time, event, IV,
     dscore1 = c(sum(Z*resd1), drop(apply(Z*resd2, 2, sum)))
     dscore2 = cbind(t(Covariates)%*%resd1, t(Covariates)%*%resd2)
     dscore = rbind(dscore1, dscore2)
-    init_parameters = init_parameters - drop(solve(dscore)%*%score)
-    if(sum(abs(score)) < tol) break
+    delta = drop(solve(dscore)%*%score)
+    init_parameters = init_parameters - delta
+    if(sum(abs(score)) < tol | sum(abs(delta)) < tol) break
   }
   
-  return(c(init_parameters,sum(abs(score))))
+  return(c(init_parameters,sum(abs(score)), k))
 }
 
 
