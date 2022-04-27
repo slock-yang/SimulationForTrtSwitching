@@ -1,6 +1,7 @@
 source("Fun.R")
 library(ivsacim)
 library(nleqslv)
+library(ahaz)
 # set.seed(1234)
 expit = function(d) return(exp(d)/(exp(d)+1))
 
@@ -65,6 +66,8 @@ nrep = 100
 n = 1000
 Constant_beta = rep(0, nrep)
 Constant_alpha = rep(0, nrep)
+ahaz_beta = rep(0, nrep)
+ahaz_alpha = rep(0, nrep)
 IVest = rep(0, nrep)
 for(i in 1:nrep){
   L = runif(n, 0, 1)
@@ -82,14 +85,20 @@ for(i in 1:nrep){
   D_status = treatment_status(n, k, stime, Z, W, max_t)
   s1 = nleqslv(c(0,0), ConstantF, time = time, event = event, IV = Z, 
                Covariates = L, D_status = D_status, stime = stime)
+  s2 = ahaz(Surv(time, event = event), cbind(Z,L))
   Constant_beta[i] = s1$x[1]
   Constant_alpha[i] = s1$x[2]
+  ahaz_beta[i] = summary(s2)$coefficients[1, 1]
+  ahaz_alpha[i] = summary(s2)$coefficients[2, 1]
   s_iv = ivsacim(time, event, Z, treatment_init = Z)
   IVest[i] =  s_iv$beta_D
-  cat("[[", "rep ", i, "  Constant: ", s1$x, "  IVest: ",s_iv$beta_D, "]]\n",
+  cat("[[", "rep ", i, "  Constant: ", s1$x, "  ahaz: ",
+      summary(s2)$coefficients[, 1], "]]\n",
       sep = "")
 }
 print(mean(Constant_beta));print(mean(Constant_alpha))
+print(mean(ahaz_beta)); print(mean(ahaz_alpha))
 print(sd(Constant_beta));print(sd(Constant_alpha))
+print(sd(ahaz_beta)); print(sd(ahaz_alpha))
 print(mean(IVest))
 print(sd(IVest))
