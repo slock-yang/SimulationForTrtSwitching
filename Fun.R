@@ -1,3 +1,5 @@
+expit = function(d) return(exp(d)/(exp(d)+1))
+
 ConstantF = function(init_parameters, time, event, IV, 
     Covariates, D_status, stime)
 {
@@ -9,6 +11,8 @@ ConstantF = function(init_parameters, time, event, IV,
   k = length(stime)
   betaD = init_parameters[1]
   beta = init_parameters[-1]
+  mod = glm(IV ~ Covariates, family = binomial(link = "logit"))
+  IV_c = IV - expit(predict(mod))
   
   # calculus
   #----------------------------------------------------
@@ -18,9 +22,9 @@ ConstantF = function(init_parameters, time, event, IV,
   int_expbetaD = matrix(0, nrow = n, ncol = k)
   for(j in 1:k){
     if(j == 1){
-      int_betaD[, j] = drop(Z * betaD * stime[j])
+      int_betaD[, j] = drop(IV * betaD * stime[j])
       if(betaD != 0) {
-        int_expbetaD[, j] = ifelse(Z == 1, (exp(int_betaD[, j]) - 1)/betaD, 
+        int_expbetaD[, j] = ifelse(IV == 1, (exp(int_betaD[, j]) - 1)/betaD, 
                                    stime[j])
       } else {
         int_expbetaD[, j] = stime[j]
@@ -46,12 +50,12 @@ ConstantF = function(init_parameters, time, event, IV,
                           0.25+drop(Covariates %*% beta))*int_expbetaD[,j]
   }
   
-  return(c(sum(Z*res), drop(t(Covariates) %*% res)))
+  return(c(sum(IV_c*res), drop(t(Covariates) %*% res)))
 }
 
 
 
-ConstantF_est = function(init_parameters, time, event, IV, 
+ConstantF_est = function(init_parameters, time, event, Z, 
                          Covariates, D_status, stime, maxit=100, tol=1e-3)
 {
   # stime contains switching time
@@ -61,6 +65,9 @@ ConstantF_est = function(init_parameters, time, event, IV,
   
   n = length(time)
   k = length(stime)
+  mod = glm(Z~Covariates, family = binomial(link = "logit"))
+  Z_c = Z - expit(predict(mod))
+  
   
   # calculus
   #----------------------------------------------------
@@ -122,8 +129,8 @@ ConstantF_est = function(init_parameters, time, event, IV,
         Yt*D_status[, j]*int_expbetaD[, j]
       resd2 = resd2 - Yt*Covariates*int_expbetaD[, j]
     }
-    score = c(sum(Z*res), drop(t(Covariates) %*% res))
-    dscore1 = c(sum(Z*resd1), drop(apply(Z*resd2, 2, sum)))
+    score = c(sum(Z_c*res), drop(t(Covariates) %*% res))
+    dscore1 = c(sum(Z_c*resd1), drop(apply(Z_c*resd2, 2, sum)))
     dscore2 = cbind(t(Covariates)%*%resd1, t(Covariates)%*%resd2)
     dscore = rbind(dscore1, dscore2)
     delta = drop(solve(dscore)%*%score)
