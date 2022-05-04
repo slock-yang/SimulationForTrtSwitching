@@ -90,8 +90,10 @@ for(i in 1:nrep){
 
 cat("simulation\n",
     "add:\n",
-    apply(parameters1, 1, mean), "\n",
+    apply(parameters1 - matrix(c(0.1, 0.075, 0.075), 
+                               nrow = 3, ncol = nrep), 1, mean), "\n",
     apply(parameters1, 1, sd), "\n",
     "ignore:\n",
-    apply(parameters2, 1, mean), "\n",
+    apply(parameters2 - matrix(c(0.1, 0.075), 
+                              nrow = 2, ncol = nrep), 1, mean), "\n",
     apply(parameters2, 1, sd))

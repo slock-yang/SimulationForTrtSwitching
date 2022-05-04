@@ -63,7 +63,7 @@ print(s_iv$beta_D)
 # ============================= rep = 100 ===============================
 
 nrep = 100
-n = 1000
+n = 500
 Constant_beta = rep(0, nrep)
 Constant_alpha = rep(0, nrep)
 ahaz_beta = rep(0, nrep)
