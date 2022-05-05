@@ -166,3 +166,65 @@ ConstantF_est = function(init_parameters, time, event, Z,
 
 
 
+SCSM = function(time, event, IV, 
+    Covariates, D_status, stime)
+{
+  # Covariates must be matrix
+  # setting
+  #----------------------------------------------------
+  
+  n = length(time)
+  k = length(stime)
+  p = ncol(Covariates)
+  mod = glm(IV ~ Covariates, family = binomial(link = "logit"))
+  IV_c = IV - expit(predict(mod))
+
+
+  # calculus
+  #----------------------------------------------------
+
+  res = 0
+  int_betaD = matrix(0, nrow = n, ncol = k)
+  int_expbetaD = matrix(0, nrow = n, ncol = k)
+  dBD = rep(0, k)
+  beta = matrix(0, nrow = p, ncol = k)
+  init = c(0, rep(0, p))
+
+
+  f = function(init){
+    dBD = init[1]
+    beta = init[-1]
+    if(j == 1){
+      span = stime[j]
+    } else{
+      span = stime[j] - stime[j-1]
+    }
+
+    res = exp(int_betaD[, j])*dNt - exp(int_betaD[,j])*Yt*(
+      D_status[, j]*dBD + drop(Covariates%*%beta) + 0.25*span
+    )
+    return(c(sum(IV_c*res), drop(t(Covariates) %*% res)))
+  }
+
+
+  for(j in 1:k){
+    dNt = drop(ifelse(time == stime[j], 1, 0))
+    dNt = dNt*event
+    Yt = drop(ifelse(time >= stime[j], 1, 0))
+
+    if(j == 1){
+      int_betaD[, j] = drop(IV * 0)
+    }else{
+      int_betaD[, j] = int_betaD[, j-1] + 
+        drop(D_status[, j-1]*dBD[j-1])
+    }
+    
+    s = nleqslv(init, f)
+    dBD[j] = s$x[1]
+    beta[, j] = s$x[-1]
+    # cat("iter ", j, " ",s$message, "\n", sep = "")
+  }
+
+  return(list(dBD = dBD, BD = cumsum(dBD), dbeta = beta, 
+  beta = t(apply(beta, 1, cumsum))))
+}

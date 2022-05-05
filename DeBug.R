@@ -53,11 +53,11 @@ D_status = treatment_status(n, k, stime, Z, W, max_t)
 
 # s = nleqslv(rep(0, 3), Lin_Ying, time = time, stime = stime,
 #             event_new = event, Z = Z, L = L, U = U_2,  D_status = D_status)
-s1 = nleqslv(c(0,0), ConstantF, time = time, event = event, IV = Z, 
+s1 = nleqslv(c(0,0), ConstantF, time = time, event = event, IV = Z,
              Covariates = L, D_status = D_status, stime = stime)
 print(s1$x)
 s_iv = ivsacim(time, event, Z, treatment_init = Z)
-print(s_iv$beta_D)
+print(s_iv$beta)
 
 
 # ============================= rep = 100 ===============================
@@ -91,7 +91,7 @@ for(i in 1:nrep){
   ahaz_beta[i] = summary(s2)$coefficients[1, 1]
   ahaz_alpha[i] = summary(s2)$coefficients[2, 1]
   s_iv = ivsacim(time, event, Z, treatment_init = Z)
-  IVest[i] =  s_iv$beta_D
+  IVest[i] =  s_iv$beta
   cat("[[", "rep ", i, "  Constant: ", s1$x, "  ahaz: ",
       summary(s2)$coefficients[, 1], "]]\n",
       sep = "")
