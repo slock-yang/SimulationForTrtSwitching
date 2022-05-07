@@ -12,8 +12,7 @@ r = 0.5
 L = runif(n, 0, 1)
 L = matrix(L, nrow = n)
 U = runif(n, 0, 1)
-epsilon = rnorm(n)
-Z_p = expit(r*L + epsilon)
+Z_p = expit(r*L)
 Z = rbinom(n, 1, Z_p)
 C = rexp(n)/(0.01 + 0.05*L)
 max_t = 6
