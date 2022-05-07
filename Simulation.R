@@ -1,13 +1,17 @@
 source("Fun.R")
+source("Fun_parallel.R")
 library(ivsacim)
 library(nleqslv)
 # set.seed(1234)
 expit = function(d) return(exp(d)/(exp(d)+1))
+core = detectCores()-2
+cl = makeCluster(getOption("cl.cores", core))
+registerDoParallel(cl)
 
 # Setting
 #---------------------------------------------------------------------
 
-n = 500
+n = 1000
 r = 0.5
 L = runif(n, 0, 1)
 L = matrix(L, nrow = n)
@@ -39,10 +43,19 @@ D_status = treatment_status(n, k, stime, Z, W, max_t)
 #---------------------------------------------------------------------
 
 Cov = cbind(L, U)
-s = nleqslv(c(0,0,0), ConstantF, time = time_c, event = event, IV = Z, 
-            Covariates = Cov, D_status = D_status, stime = stime)
-print(s$x)
 
+system.time(s1 <- nleqslv(c(0,0,0), ConstantF, time = time_c, event = event, IV = Z, 
+            Covariates = Cov, D_status = D_status, stime = stime))
+
+system.time(s2 <- nleqslv(c(0,0,0), ConstantF_parallel, time = time_c, event = event, IV = Z, 
+            Covariates = Cov, D_status = D_status, stime = stime))
+print(s1$x);print(s2$x)
+
+system.time(k1 <- ConstantF(c(0.1, 0.075, 0.075), time = time_c, event, Z,
+              Cov, D_status, stime))
+system.time(k2 <- ConstantF_parallel(c(0.1, 0.075, 0.075), time = time_c, event, Z,
+              Cov, D_status, stime))
+print(k1);print(k2)
 
 # Numerical experiment
 #---------------------------------------------------------------------
@@ -96,3 +109,5 @@ cat("simulation\n",
     apply(parameters2 - matrix(c(0.1, 0.075), 
                               nrow = 2, ncol = nrep), 1, mean), "\n",
     apply(parameters2, 1, sd))
+
+stopCluster(cl)
