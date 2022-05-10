@@ -4,7 +4,7 @@ library(ivsacim)
 library(nleqslv)
 # set.seed(1234)
 expit = function(d) return(exp(d)/(exp(d)+1))
-core = detectCores()-2
+core = detectCores()
 cl = makeCluster(getOption("cl.cores", core))
 registerDoParallel(cl)
 
@@ -47,15 +47,15 @@ Cov = cbind(L, U)
 system.time(s1 <- nleqslv(c(0,0,0), ConstantF, time = time_c, event = event, IV = Z, 
             Covariates = Cov, D_status = D_status, stime = stime))
 
-system.time(s2 <- nleqslv(c(0,0,0), ConstantF_parallel, time = time_c, event = event, IV = Z, 
-            Covariates = Cov, D_status = D_status, stime = stime))
-print(s1$x);print(s2$x)
-
-system.time(k1 <- ConstantF(c(0.1, 0.075, 0.075), time = time_c, event, Z,
-              Cov, D_status, stime))
-system.time(k2 <- ConstantF_parallel(c(0.1, 0.075, 0.075), time = time_c, event, Z,
-              Cov, D_status, stime))
-print(k1);print(k2)
+# system.time(s2 <- nleqslv(c(0,0,0), ConstantF_parallel, time = time_c, event = event, IV = Z, 
+#             Covariates = Cov, D_status = D_status, stime = stime))
+# print(s1$x);print(s2$x)
+# 
+# system.time(k1 <- ConstantF(c(0.1, 0.075, 0.075), time = time_c, event, Z,
+#               Cov, D_status, stime))
+# system.time(k2 <- ConstantF_parallel(c(0.1, 0.075, 0.075), time = time_c, event, Z,
+#               Cov, D_status, stime))
+# print(k1);print(k2)
 
 # Numerical experiment
 #---------------------------------------------------------------------
@@ -70,7 +70,7 @@ for(i in 1:nrep){
   L = matrix(L, nrow = n)
   U = runif(n, 0, 1)
   epsilon = rnorm(n)
-  Z_p = expit(r*L + epsilon)
+  Z_p = expit(r*L)
   Z = rbinom(n, 1, Z_p)
   C = rexp(n)/(0.01 + 0.05*L)
   max_t = 6
