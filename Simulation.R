@@ -44,12 +44,12 @@ D_status = treatment_status(n, k, stime, Z, W, max_t)
 
 Cov = cbind(L, U)
 
-system.time(s1 <- nleqslv(c(0,0,0), ConstantF, time = time_c, event = event, IV = Z, 
-            Covariates = Cov, D_status = D_status, stime = stime))
-
-# system.time(s2 <- nleqslv(c(0,0,0), ConstantF_parallel, time = time_c, event = event, IV = Z, 
+# system.time(s1 <- nleqslv(c(0,0,0), ConstantF, time = time_c, event = event, IV = Z, 
 #             Covariates = Cov, D_status = D_status, stime = stime))
-# print(s1$x);print(s2$x)
+
+system.time(s2 <- nleqslv(c(0,0,0), ConstantF_parallel, time = time_c, event = event, IV = Z, 
+            Covariates = Cov, D_status = D_status, stime = stime))
+print(s2$x)
 # 
 # system.time(k1 <- ConstantF(c(0.1, 0.075, 0.075), time = time_c, event, Z,
 #               Cov, D_status, stime))
