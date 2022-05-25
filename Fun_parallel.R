@@ -123,11 +123,12 @@ ConstantF_parallel_jac = function(init_parameters, time, event, IV,
     }
   }
 
-  out = foreach(j in 1:k, .combine = "+") %dopar% {
+  out = foreach(j = 1:k, .combine = "+") %dopar% {
     dNt = drop(ifelse(time == stime[j], 1, 0))
     dNt = dNt*event
     Yt = drop(ifelse(time >= stime[j], 1, 0)) 
-    res = rep(0, n)
+    res_b = rep(0, n)
+    res_a = matrix(0, nrow = n, ncol = ncol(Covariates))
     idx = Yt > 0
     if(sum(idx) == 0) break
 
@@ -144,13 +145,13 @@ ConstantF_parallel_jac = function(init_parameters, time, event, IV,
                                stime[j])
             int_cdexpbetaD = ifelse(tmpDc > 0, t(int_D[idx, j] * t(exp(int_cbetaD)))/(tmpDc*betaD) - 
                                             int_cexpbetaD/(tmpDc*betaD), 
-                                            matrix((int_D[idx, j])^2/2, nrow = length(idx), 
-                                            ncol = length(idx), byrow = TRUE))
+                                            matrix((int_D[idx, j])^2/2, nrow = sum(idx), 
+                                            ncol = sum(idx), byrow = TRUE))
         } else {
             int_expbetaD = stime[j]
             int_dexpbetaD = (int_D[idx, j])^2/2
             int_cexpbetaD = matrix(stime[j], nrow = sum(idx), ncol = sum(idx))
-            int_cdexpbetaD = matrix((int_D[idx, j])^2/2, nrow = length(idx), ncol = length(idx), byrow = TRUE)
+            int_cdexpbetaD = matrix((int_D[idx, j])^2/2, nrow = sum(idx), ncol = sum(idx), byrow = TRUE)
         }
     } else {
         tmpDc = outer(D_status[idx, j-1], D_status[idx, j-1], "+")
@@ -162,8 +163,8 @@ ConstantF_parallel_jac = function(init_parameters, time, event, IV,
                                       exp(betaD * int_D[idx, j-1]))/betaD, 
                                    (stime[j] - stime[j-1])*exp(betaD * int_D[idx, j]))
         int_dexpbetaD = ifelse(D_status[idx, j-1] == 1, 
-                                   (int_D[,idx, j]*exp(betaD * int_D[idx, j]) - 
-                                      int_D[,idx, j-1]*exp(betaD * int_D[idx, j-1]))/betaD,
+                                   (int_D[idx, j]*exp(betaD * int_D[idx, j]) - 
+                                      int_D[idx, j-1]*exp(betaD * int_D[idx, j-1]))/betaD,
                                       0) - int_expbetaD/betaD
         int_cexpbetaD = ifelse(tmpDc > 0, 
                                (exp(int_cbetaD) - 
@@ -174,19 +175,19 @@ ConstantF_parallel_jac = function(init_parameters, time, event, IV,
                                             int_cexpbetaD/(tmpDc*betaD), 
                                             matrix((stime[j] - stime[j-1]) * int_D[idx, j-1] + 
                                             D_status[idx, j] * (stime[j] - stime[j-1])^2/2, 
-                                            nrow = length(idx), ncol = length(idx), byrow = TRUE))
+                                            nrow = sum(idx), ncol = sum(idx), byrow = TRUE))
       } else {
         int_expbetaD = stime[j] - stime[j-1]
         int_dexpbetaD = (stime[j] - stime[j-1]) * int_D[idx, j-1] + D_status[idx, j] * (stime[j] - stime[j-1])^2/2
         int_cexpbetaD = matrix(stime[j] - stime[j-1], nrow = sum(idx), ncol = sum(idx))
         int_cdexpbetaD = matrix((stime[j] - stime[j-1]) * int_D[idx, j-1] + 
                                             D_status[idx, j] * (stime[j] - stime[j-1])^2/2, 
-                                            nrow = length(idx), ncol = length(idx), byrow = TRUE)
+                                            nrow = sum(idx), ncol = sum(idx), byrow = TRUE)
       }
     }
 
     Covbeta = drop(Covariates %*% beta)
-    SY = sum(exp(int_betaD[, j])*Yt)
+    SY = sum(exp(betaD*int_D[, j])*Yt)
 
     res_b1 = int_D[idx, j]*exp(betaD*int_D[idx, j])*dNt[idx]
     res_b2 = -int_dexpbetaD*(Covbeta[idx]+D_status[idx,j]*betaD)
@@ -199,16 +200,21 @@ ConstantF_parallel_jac = function(init_parameters, time, event, IV,
                 apply(int_cexpbetaD*(Covbeta[idx] + D_status[idx, j]*betaD), 2, sum)) * 
                 sum(int_D[idx, j]*exp(betaD*int_D[idx, j])*Yt))/SY^2
     
-    res_b = res_b1 + res_b2 + res_b3 + res_b4 + res_b5
+    res_b[idx] = res_b1 + res_b2 + res_b3 + res_b4 + res_b5
 
     res_a1 = -int_expbetaD*Covariates[idx, ]
-    res_a2 = t(apply(int_cexpbetaD, 2, function(d) return(apply(Covariates[idx, ]*d),2,sum)))/SY
+    f = function(d){
+      k = apply(Covariates[idx, , drop = F]*d,2,sum)
+      k
+    } 
+    res_a2 = t(apply(int_cexpbetaD, 2, f))/SY
 
-    res_a = res_a1 + res_a2
+    res_a[idx, ] = res_a1 + res_a2
 
     k1 = c(sum(IV_c*res_b), apply(IV_c*res_a, 2, sum))
     k2 = cbind(t(Covariates) %*% res_b, t(Covariates)%*%res_a)
     res = rbind(k1, k2)
+    res
   }
 
   return(out)

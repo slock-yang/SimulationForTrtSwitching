@@ -1,5 +1,6 @@
 source("Fun.R")
 source("Fun_parallel.R")
+source("Fun_parallel_est.R")
 library(ivsacim)
 library(nleqslv)
 library(ahaz)
@@ -55,6 +56,18 @@ D_status = treatment_status(n, k, stime, Z, W, max_t)
 # ====================================================
 
 
+
+s = nleqslv(rep(0,2), ConstantF_parallel, jac = ConstantF_parallel_jac, time = time, event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime)
+print(s$x)
+
+system.time(s <- ConstantF_parallel_est(rep(0, 2), time = time, event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime))
+print(s)
+system.time(s <- nleqslv(rep(0,2), ConstantF_parallel, jac = ConstantF_parallel_jac, time = time, 
+                  event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime))
+print(s)
 # s = nleqslv(rep(0, 3), Lin_Ying, time = time, stime = stime,
 #             event_new = event, Z = Z, L = L, U = U_2,  D_status = D_status)
 # s1 = nleqslv(c(0,0), ConstantF, time = time, event = event, IV = Z,
@@ -106,3 +119,5 @@ print(sd(Constant_beta));print(sd(Constant_alpha))
 print(sd(ahaz_beta)); print(sd(ahaz_alpha))
 print(mean(IVest))
 print(sd(IVest))
+
+stopCluster(cl)
