@@ -6,7 +6,7 @@ library(nleqslv)
 library(ahaz)
 # set.seed(1234)
 expit = function(d) return(exp(d)/(exp(d)+1))
-core = detectCores()-1
+core = detectCores()/2
 cl = makeCluster(getOption("cl.cores", core))
 registerDoParallel(cl)
 
@@ -57,17 +57,18 @@ D_status = treatment_status(n, k, stime, Z, W, max_t)
 
 
 
-s = nleqslv(rep(0,2), ConstantF_parallel, jac = ConstantF_parallel_jac, time = time, event = event, IV = Z,
-            Covariates = L, D_status = D_status, stime = stime)
-print(s$x)
-
-system.time(s <- ConstantF_parallel_est(rep(0, 2), time = time, event = event, IV = Z,
-            Covariates = L, D_status = D_status, stime = stime))
-print(s)
 system.time(s <- nleqslv(rep(0,2), ConstantF_parallel, jac = ConstantF_parallel_jac, time = time, 
                   event = event, IV = Z,
             Covariates = L, D_status = D_status, stime = stime))
-print(s)
+print(s$x)
+
+# system.time(s1 <- ConstantF_parallel_est(rep(0, 2), time = time, event = event, IV = Z,
+#             Covariates = L, D_status = D_status, stime = stime))
+# print(s1)
+
+system.time(s2 <- ConstantF_parallel_Newtonest(rep(0, 2), time = time, event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime))
+print(s2)
 # s = nleqslv(rep(0, 3), Lin_Ying, time = time, stime = stime,
 #             event_new = event, Z = Z, L = L, U = U_2,  D_status = D_status)
 # s1 = nleqslv(c(0,0), ConstantF, time = time, event = event, IV = Z,
