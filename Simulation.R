@@ -1,5 +1,6 @@
-source("Fun.R")
-source("Fun_parallel.R")
+source("Function/Fun.R")
+source("Function/Fun_parallel.R")
+source("Function/integral.R")
 library(ivsacim)
 library(nleqslv)
 # set.seed(1234)
@@ -50,6 +51,14 @@ Cov = cbind(L, U)
 system.time(s2 <- nleqslv(c(0,0,0), ConstantF_parallel, time = time_c, event = event, IV = Z, 
             Covariates = Cov, D_status = D_status, stime = stime))
 print(s2$x)
+
+system.time(s <- ConstantF_parallel(c(0.1,0.075,0.075), time = time, event = event, IV = Z,
+                                    Covariates = Cov, D_status = D_status, stime = stime))
+print(s)
+
+system.time(s1 <- integral_cpp(c(0.1,0.075,0.075), time = time, event = event, IV = Z,
+                               Covariates = Cov, D_status = D_status, stime = stime))
+print(s1[[1]])
 # 
 # system.time(k1 <- ConstantF(c(0.1, 0.075, 0.075), time = time_c, event, Z,
 #               Cov, D_status, stime))

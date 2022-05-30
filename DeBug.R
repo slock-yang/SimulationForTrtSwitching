@@ -1,6 +1,7 @@
-source("Fun.R")
-source("Fun_parallel.R")
-source("Fun_parallel_est.R")
+source("Function/Fun.R")
+source("Function/Fun_parallel.R")
+source("Function/Fun_parallel_est.R")
+source("Function/integral.R")
 library(ivsacim)
 library(nleqslv)
 library(ahaz)
@@ -13,7 +14,7 @@ registerDoParallel(cl)
 # ================================================
 # ================ Basic setting =================
 # ================================================
-n = 500
+n = 1000
 r = 0.5
 L = runif(n, 0, 1)
 L = matrix(L, nrow = n)
@@ -55,16 +56,22 @@ D_status = treatment_status(n, k, stime, Z, W, max_t)
 # ================   Estimation   ====================
 # ====================================================
 
+IV = Z
+Covariates = L
+init_parameters = c(0.1, 0.075)
 
-
-system.time(s <- nleqslv(rep(0,2), ConstantF_parallel, jac = ConstantF_parallel_jac, time = time, 
+system.time(s <- nleqslv(rep(0,2), integral_cpp, time = time, 
                   event = event, IV = Z,
             Covariates = L, D_status = D_status, stime = stime))
 print(s$x)
 
-# system.time(s1 <- ConstantF_parallel_est(rep(0, 2), time = time, event = event, IV = Z,
-#             Covariates = L, D_status = D_status, stime = stime))
-# print(s1)
+system.time(s <- ConstantF_parallel(init_parameters, time = time, event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime))
+print(s)
+
+system.time(s1 <- integral_cpp(init_parameters, time = time, event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime))
+print(s1[[1]])
 
 system.time(s2 <- ConstantF_parallel_Newtonest(rep(0, 2), time = time, event = event, IV = Z,
             Covariates = L, D_status = D_status, stime = stime))
