@@ -1,5 +1,6 @@
 library(Rcpp)
-sourceCpp("Function/itegral/integral.cpp")
+library(RcppArmadillo)
+sourceCpp("Function/integral/integral.cpp")
 
 integral_cpp = function(init_parameters, time, event, IV, 
     Covariates, D_status, stime) 
@@ -14,3 +15,5 @@ integral_cpp = function(init_parameters, time, event, IV,
 
     return(fn)
 }
+
+sourceCpp("Function/integral/integral_est.cpp")
