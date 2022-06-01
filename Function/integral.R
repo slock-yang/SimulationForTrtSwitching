@@ -1,6 +1,6 @@
 library(Rcpp)
-library(RcppArmadillo)
 sourceCpp("Function/integral/integral.cpp")
+sourceCpp("Function/integral/integral_est.cpp")
 
 integral_cpp = function(init_parameters, time, event, IV, 
     Covariates, D_status, stime) 
@@ -16,4 +16,17 @@ integral_cpp = function(init_parameters, time, event, IV,
     return(fn)
 }
 
-sourceCpp("Function/integral/integral_est.cpp")
+
+integral_est_cpp = function(init_parameters, time, event, IV, 
+    Covariates, D_status, stime, max_iter = 20, tol = 1e-5)
+{
+    mod = glm(IV ~ Covariates, family = binomial(link = "logit"))
+    IV_c = IV - expit(predict(mod))
+
+    out = integral_est(init_parameters = init_parameters, time = time, 
+            event = event, IV = IV, IV_c = IV_c, Covariates = Covariates, 
+            D_status = D_status, stime = stime, max_iter = max_iter,
+            tol = tol)
+
+    return(out)
+}

@@ -242,7 +242,7 @@ ConstantF_parallel_est = function(init_parameters, time, event, IV,
 
 
 ConstantF_parallel_Newtonest = function(init_parameters, time, event, IV, 
-    Covariates, D_status, stime, tol = 1e-3, xtol = 1e-5, iter = 20)
+    Covariates, D_status, stime, tol = 1e-3, xtol = 1e-5, iter = 10)
 {
   # Covariates must be matrix
   # setting
@@ -320,8 +320,8 @@ ConstantF_parallel_Newtonest = function(init_parameters, time, event, IV,
   res_b3 = -int_expbetaD*D_status[idx,j]
   res_b4 = -(int_D[idx, j]*apply(exp(int_cbetaD)*dNt[idx], 2, sum) - 
               apply(int_cdexpbetaD*(D_status[idx,j]*betaD + Covbeta[idx]), 2, sum))/SY
-  res_b5 = -((t(int_D[idx, j]*t(exp(betaD*int_D[idx, j])))*dNt[idx] - 
-              apply(t(int_cdexpbetaD) * (Covbeta[idx]+D_status[idx,j]*betaD), 2, sum))*SY - 
+  res_b5 = -((apply(int_D[idx, j]*exp(int_cbetaD)*dNt[idx], 2, sum) - 
+              apply(t(int_cdexpbetaD) * (Covbeta[idx]+D_status[idx,j]*betaD), 2, sum) - apply(int_cexpbetaD * D_status[idx, j], 2, sum))*SY - 
               (apply(exp(int_cbetaD)*dNt[idx], 2, sum) - 
               apply(int_cexpbetaD*(Covbeta[idx] + D_status[idx, j]*betaD), 2, sum)) * 
               sum(int_D[idx, j]*exp(betaD*int_D[idx, j])*Yt))/SY^2
@@ -390,5 +390,5 @@ ConstantF_parallel_Newtonest = function(init_parameters, time, event, IV,
   }
 
 
-  return(list(parameters = tmp_parameters, convergence = covergence, iter = i))
+  return(list(parameters = tmp_parameters, convergence = covergence, iter = i, H = H))
 }

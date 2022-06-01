@@ -14,7 +14,7 @@ registerDoParallel(cl)
 # ================================================
 # ================ Basic setting =================
 # ================================================
-n = 1000
+n = 500
 r = 0.5
 L = runif(n, 0, 1)
 L = matrix(L, nrow = n)
@@ -60,10 +60,15 @@ IV = Z
 Covariates = L
 init_parameters = c(0.1, 0.075)
 
-system.time(s <- nleqslv(rep(0,2), integral_cpp, time = time, 
+system.time(s <- nleqslv(init_parameters, integral_cpp, time = time, 
                   event = event, IV = Z,
             Covariates = L, D_status = D_status, stime = stime))
 print(s$x)
+
+system.time(ss <- integral_est_cpp(init_parameters, time = time, 
+                  event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime, max_iter = 1, tol = 1e-2))
+print(ss)
 
 system.time(s <- ConstantF_parallel(init_parameters, time = time, event = event, IV = Z,
             Covariates = L, D_status = D_status, stime = stime))

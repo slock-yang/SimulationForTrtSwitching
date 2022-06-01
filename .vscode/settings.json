@@ -2,5 +2,6 @@
     "files.associations": {
         "complex": "cpp",
         "armadillo": "cpp"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Enabled"
 }
