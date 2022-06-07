@@ -35,7 +35,8 @@ SEXP integral_est(
         fn.zeros(); SY.zeros(); dSY.zeros(); int_D.zeros(); int_expbetaD.zeros(), int_dexpbetaD.zeros(), int_dexpbetaD_Lam.zeros();
         int_expbetaD_dLam_dalpha.zeros();dPhi.zeros(); Hessian.zeros();
         betaD = init_parameters[0];
-        beta = init_parameters[1];
+        beta = init_parameters.subvec(1, p); // index is only adapted to the one dimensional covariates
+        arma::arma_print(beta);
         // if(iter == 0) 
         // {
         //     arma::arma_print(betaD);
