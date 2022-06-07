@@ -14,7 +14,7 @@ registerDoParallel(cl)
 # ================================================
 # ================ Basic setting =================
 # ================================================
-n = 500
+n = 1000
 r = 0.5
 L = runif(n, 0, 1)
 L = matrix(L, nrow = n)
@@ -60,45 +60,38 @@ IV = Z
 Covariates = L
 init_parameters = c(0.1, 0.075)
 
-system.time(s <- nleqslv(init_parameters, integral_cpp, time = time, 
+system.time(s <- nleqslv(c(0.1,0.075), integral_cpp, time = time, 
                   event = event, IV = Z,
-            Covariates = L, D_status = D_status, stime = stime))
+            Covariates = L, D_status = D_status, stime = stime, jacobian = TRUE, method = "Newton", global = "none"))
 print(s$x)
 
-system.time(ss <- integral_est_cpp(init_parameters, time = time, 
+system.time(ss <- integral_est_debug_cpp(c(0,0), time = time, 
                   event = event, IV = Z,
-            Covariates = L, D_status = D_status, stime = stime, max_iter = 1, tol = 1e-2))
+            Covariates = L, D_status = D_status, stime = stime, max_iter = 20, tol = 1e-2))
 print(ss)
 
-system.time(s <- ConstantF_parallel(init_parameters, time = time, event = event, IV = Z,
+system.time(sss <- integral_est_cpp(c(0,0), time = time, 
+                  event = event, IV = Z,
+            Covariates = L, D_status = D_status, stime = stime, max_iter = 10, tol = 1e-3))
+print(sss)
+
+system.time(ssss <- ConstantF_parallel_Newtonest(c(0.1,0.075), time = time, 
+                  event = event, IV = Z,
             Covariates = L, D_status = D_status, stime = stime))
-print(s)
-
-system.time(s1 <- integral_cpp(init_parameters, time = time, event = event, IV = Z,
+print(ssss)
+print(integral_cpp(sss$x, time = time, 
+                  event = event, IV = Z,
             Covariates = L, D_status = D_status, stime = stime))
-print(s1[[1]])
-
-system.time(s2 <- ConstantF_parallel_Newtonest(rep(0, 2), time = time, event = event, IV = Z,
-            Covariates = L, D_status = D_status, stime = stime))
-print(s2)
-# s = nleqslv(rep(0, 3), Lin_Ying, time = time, stime = stime,
-#             event_new = event, Z = Z, L = L, U = U_2,  D_status = D_status)
-# s1 = nleqslv(c(0,0), ConstantF, time = time, event = event, IV = Z,
-#              Covariates = L, D_status = D_status, stime = stime)
-# print(s1$x)
-# s_iv = ivsacim(time, event, Z, treatment_init = Z)
-# print(s_iv$beta)
 
 
-# ============================= rep = 100 ===============================
 
 nrep = 100
 n = 500
 Constant_beta = rep(0, nrep)
 Constant_alpha = rep(0, nrep)
-ahaz_beta = rep(0, nrep)
-ahaz_alpha = rep(0, nrep)
-IVest = rep(0, nrep)
+# ahaz_beta = rep(0, nrep)
+# ahaz_alpha = rep(0, nrep)
+# IVest = rep(0, nrep)
 for(i in 1:nrep){
   L = runif(n, 0, 1)
   L = matrix(L, nrow = n)
@@ -113,24 +106,19 @@ for(i in 1:nrep){
   max_t = max(time)
   W = rep(0, n)
   D_status = treatment_status(n, k, stime, Z, W, max_t)
-  s1 = nleqslv(c(0,0), ConstantF_parallel, time = time, event = event, IV = Z, 
+  s1 = integral_est_cpp(c(0,0), time = time, event = event, IV = Z, 
                Covariates = L, D_status = D_status, stime = stime)
-  s2 = ahaz(Surv(time, event = event), cbind(Z,L))
   Constant_beta[i] = s1$x[1]
   Constant_alpha[i] = s1$x[2]
-  ahaz_beta[i] = summary(s2)$coefficients[1, 1]
-  ahaz_alpha[i] = summary(s2)$coefficients[2, 1]
-  s_iv = ivsacim(time, event, Z, treatment_init = Z)
-  IVest[i] =  s_iv$beta_D
-  cat("[[", "rep ", i, "  Constant: ", s1$x, "  ahaz: ",
-      summary(s2)$coefficients[, 1], "]]\n",
-      sep = "")
+#   ahaz_beta[i] = summary(s2)$coefficients[1, 1]
+#   ahaz_alpha[i] = summary(s2)$coefficients[2, 1]
+#   s_iv = ivsacim(time, event, Z, treatment_init = Z)
+#   IVest[i] =  s_iv$beta_D
+  cat("[[", "rep ", i, "  Constant: ", s1$x, "]]\n")
 }
 print(mean(Constant_beta));print(mean(Constant_alpha))
-print(mean(ahaz_beta)); print(mean(ahaz_alpha))
+# print(mean(ahaz_beta)); print(mean(ahaz_alpha))
 print(sd(Constant_beta));print(sd(Constant_alpha))
-print(sd(ahaz_beta)); print(sd(ahaz_alpha))
-print(mean(IVest))
-print(sd(IVest))
-
-stopCluster(cl)
+# print(sd(ahaz_beta)); print(sd(ahaz_alpha))
+# print(mean(IVest))
+# print(sd(IVest))

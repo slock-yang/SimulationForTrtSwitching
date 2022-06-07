@@ -23,6 +23,7 @@ SEXP integral_est(
     int p = init_parameters.size() - 1;
     // printf("%d %d %d", n, k, p);
     
+    int step;
     bool Convergence;
     double tmp, tmp_cexpbetaD, tmp_cD, old_cexpbetaD, betaD;
     arma::vec beta(p), res(n), Covbeta(n), int_cexpbetaD(n), int_cdexpbetaD_1(n), int_cdexpbetaD_2(n), fn(p+1), fn_abs(p+1), SY(k), dSY(k), new_parameters(p+1), diff(p+1);
@@ -30,8 +31,16 @@ SEXP integral_est(
 
     for (int iter = 0; iter < max_iter; iter++)
     {
+        res.zeros(); Covbeta.zeros(); int_cexpbetaD.zeros(); int_Lam.zeros(); int_cdexpbetaD_1.zeros(); int_cdexpbetaD_2.zeros();
+        fn.zeros(); SY.zeros(); dSY.zeros(); int_D.zeros(); int_expbetaD.zeros(), int_dexpbetaD.zeros(), int_dexpbetaD_Lam.zeros();
+        int_expbetaD_dLam_dalpha.zeros();dPhi.zeros(); Hessian.zeros();
         betaD = init_parameters[0];
-        beta = init_parameters[-0];
+        beta = init_parameters[1];
+        // if(iter == 0) 
+        // {
+        //     arma::arma_print(betaD);
+        //     arma::arma_print(beta);
+        // }
         for (int i = 0; i < n; i++)
         {
             for (int ii = 0; ii < p; ii++)
@@ -59,7 +68,7 @@ SEXP integral_est(
             }
         }
 
-        
+
         for (int i = 0; i < n; i++)
         {
             for (int j = 0; j < k; j++)
@@ -76,7 +85,7 @@ SEXP integral_est(
                         if (betaD != 0)
                         {
                             int_expbetaD(i, j) = (IV[i] > 0.5 ) ? (exp(betaD * int_D(i, j))-1)/betaD:stime[j];
-                            int_dexpbetaD(i, j) = (IV[i] > 0.5) ? (int_D(i, j) * exp(betaD * int_D(i, j))/betaD - int_expbetaD(i, j)/betaD):(- int_expbetaD(i, j)/betaD);
+                            int_dexpbetaD(i, j) = (IV[i] > 0.5) ? (int_D(i, j) * exp(betaD * int_D(i, j))/betaD - int_expbetaD(i, j)/betaD):0;
                         }
                         else
                         { 
@@ -89,12 +98,12 @@ SEXP integral_est(
                         if (betaD != 0)
                         {
                             int_expbetaD(i, j) = (D_status(i, j-1) > 0.5) ? (exp(betaD * int_D(i, j)) - exp(betaD * int_D(i, j-1)))/betaD:(stime[j] - stime[j-1]) * exp(betaD * int_D(i, j));
-                            int_dexpbetaD(i, j) = (D_status(i, j-1) > 0.5) ? ((int_D(i, j) * exp(betaD * int_D(i, j)) - int_D(i, j-1) * exp(betaD * int_D(i, j-1)))/betaD - int_expbetaD(i, j)/betaD) : ( - int_expbetaD(i, j)/betaD);
+                            int_dexpbetaD(i, j) = (D_status(i, j-1) > 0.5) ? ((int_D(i, j) * exp(betaD * int_D(i, j)) - int_D(i, j-1) * exp(betaD * int_D(i, j-1)))/betaD - int_expbetaD(i, j)/betaD) : (int_D(i, j)*exp(betaD * int_D(i, j))*(stime[j] - stime[j-1]));
                         }
                         else 
                         {
                             int_expbetaD(i, j) = stime[j] - stime[j-1];
-                            int_dexpbetaD(i, j) = (stime[j] - stime[j-1]) * int_D(i, j-1) + D_status(i, j) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2;
+                            int_dexpbetaD(i, j) = (stime[j] - stime[j-1]) * int_D(i, j-1) + D_status(i, j-1) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2;
                             
                         }
                     }
@@ -110,8 +119,8 @@ SEXP integral_est(
                             if (betaD != 0)
                             {
                                 int_cexpbetaD[ii] = ((tmp_cD) > 0.5) ? (tmp_cexpbetaD - 1) / ((tmp_cD) * betaD):stime[j];
-                                int_cdexpbetaD_1[ii] = (tmp_cD > 0.5) ? (int_D(i, j) * tmp_cexpbetaD/((tmp_cD)*betaD) - int_cexpbetaD[ii]/((tmp_cD)*betaD)):(int_D(i, j) * int_D(i, j)/2);
-                                int_cdexpbetaD_2[ii] = (tmp_cD > 0.5) ? (int_D(ii, j) * tmp_cexpbetaD/((tmp_cD)*betaD) - int_cexpbetaD[ii]/((tmp_cD)*betaD)):(int_D(ii, j) * int_D(ii, j)/2);
+                                int_cdexpbetaD_1[ii] = (IV[i] > 0.5) ? (int_D(i, j) * tmp_cexpbetaD/((tmp_cD)*betaD) - int_cexpbetaD[ii]/((tmp_cD)*betaD)):0;
+                                int_cdexpbetaD_2[ii] = (IV[ii] > 0.5) ? (int_D(ii, j) * tmp_cexpbetaD/((tmp_cD)*betaD) - int_cexpbetaD[ii]/((tmp_cD)*betaD)):0;
                             }
                             else
                             {
@@ -130,19 +139,19 @@ SEXP integral_est(
                                 int_cexpbetaD[ii] = ((tmp_cD) > 0.5) ? 
                                                     (tmp_cexpbetaD - old_cexpbetaD) / ((tmp_cD) * betaD):
                                                     (stime[j] - stime[j-1]) * exp((int_D(i, j) + int_D(ii, j))*betaD);
-                                int_cdexpbetaD_1[ii] = (tmp_cD > 0.5) ? 
+                                int_cdexpbetaD_1[ii] = (D_status(i, j-1) > 0.5) ? 
                                                     ((int_D(i, j) * tmp_cexpbetaD - int_D(i, j-1) * old_cexpbetaD)/((tmp_cD)*betaD) - 
-                                                    int_cexpbetaD[ii]/((tmp_cD)*betaD)):((stime[j] - stime[j-1]) * int_D(i, j-1) + D_status(i, j) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2);
+                                                    int_cexpbetaD[ii]/((tmp_cD)*betaD)):int_D(i, j-1) * int_cexpbetaD[ii];
                                 int_cdexpbetaD_2[ii] = (D_status(ii, j-1) > 0.5) ? 
                                                     ((int_D(ii, j) * tmp_cexpbetaD - int_D(ii, j-1) * old_cexpbetaD)/((tmp_cD)*betaD) - 
-                                                    int_cexpbetaD[ii]/((tmp_cD)*betaD)):((stime[j] - stime[j-1]) * int_D(ii, j-1) + D_status(ii, j) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2);
+                                                    int_cexpbetaD[ii]/((tmp_cD)*betaD)):int_D(ii, j-1) * int_cexpbetaD[ii];
                             }
                             else
                             {
                                 // printf("%d\n", j);
                                 int_cexpbetaD[ii] = stime[j] - stime[j-1];
-                                int_cdexpbetaD_1[ii] = (stime[j] - stime[j-1]) * int_D(i, j-1) + D_status(i, j) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2;
-                                int_cdexpbetaD_2[ii] = (stime[j] - stime[j-1]) * int_D(ii, j-1) + D_status(ii, j) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2;
+                                int_cdexpbetaD_1[ii] = (stime[j] - stime[j-1]) * int_D(i, j-1) + D_status(i, j-1) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2;
+                                int_cdexpbetaD_2[ii] = (stime[j] - stime[j-1]) * int_D(ii, j-1) + D_status(ii, j-1) * (stime[j] - stime[j-1]) * (stime[j] - stime[j-1])/2;
                             }
                         }
                         tmp = dNt(ii, j) * tmp_cexpbetaD - Yt(ii, j) * int_cexpbetaD[ii] * (D_status(ii, j) * betaD + Covbeta[ii]);
@@ -154,7 +163,7 @@ SEXP integral_est(
                                                         int_cexpbetaD[ii] * Yt(ii, j) * D_status(ii, j)) * SY[j] - tmp * dSY[j];                        
                         for (int kk = 0; kk < p; kk++)
                         {
-                            int_expbetaD_dLam_dalpha(i, kk) = int_expbetaD_dLam_dalpha(i, kk) + int_cexpbetaD[ii] * Yt(ii, j) * Covariates(ii, kk)/SY[j];
+                            int_expbetaD_dLam_dalpha(i, kk) = int_expbetaD_dLam_dalpha(i, kk) - int_cexpbetaD[ii] * Yt(ii, j) * Covariates(ii, kk)/SY[j];
                         }
                     }
                     
@@ -171,7 +180,7 @@ SEXP integral_est(
                     {
                         
                         dPhi(i, kk) = dPhi(i, kk) + dNt(i, j) * int_D(i, j) * exp(betaD * int_D(i, j)) - 
-                                        Yt(i, j) * int_dexpbetaD[i] * (D_status(i, j) * betaD + Covbeta[i]) - 
+                                        Yt(i, j) * int_dexpbetaD(i, j) * (D_status(i, j) * betaD + Covbeta[i]) - 
                                         Yt(i, j) * int_dexpbetaD_Lam(i, j) - 
                                         Yt(i, j) * int_expbetaD(i, j) * D_status(i, j) - 
                                         Yt(i, j) * int_expbetaD_dLam(i, j);
@@ -200,25 +209,33 @@ SEXP integral_est(
                 else
                 {
                     fn[kk] = fn[kk] + Covariates(i, kk-1) * res[i];
-                    for (int kkk = 0; kkk < p; kkk++)
+                    for (int kkk = 0; kkk < p+1; kkk++)
                     {
-                        Hessian(kk, kkk) = Hessian(kk, kkk) + Covariates(i, kkk) * dPhi(i, kkk);
+                        // if(iter == 0) arma::arma_print(Covariates(i, kk-1) * dPhi(i, kkk));
+                        Hessian(kk, kkk) = Hessian(kk, kkk) + Covariates(i, kk-1) * dPhi(i, kkk);
                     }
                 }
             }
         }
+        arma::arma_print(fn);
+        arma::arma_print(Hessian);
+        // arma::arma_print(dNt);
+        // if(iter == 0)
+        //     arma::arma_print(dPhi);
         
         new_parameters = init_parameters - arma::solve(Hessian, fn);
         fn_abs = arma::abs(fn);
         diff = arma::abs(new_parameters - init_parameters);
-        if(arma::sum(fn) < tol || arma::sum(diff) < (tol * tol))
+        if(arma::sum(fn_abs) < tol || arma::sum(diff) < (tol * tol))
         {
+            step = iter;
             Convergence = true;
             break;
         }
         init_parameters = new_parameters;
         if (iter >= (max_iter - 1))
         {
+            step = iter;
             Convergence = false;
         }
     }
@@ -226,10 +243,6 @@ SEXP integral_est(
     return Rcpp::List::create(
         Named("x") = init_parameters,
         Named("Convergence") = Convergence,
-        Named("Hessian") = Hessian,
-        Named("dPhi") = dPhi,
-        Named("int_dexpbetaD") = int_dexpbetaD,
-        Named("int_dexpbetaD_Lam") = int_dexpbetaD_Lam,
-        Named("int_expbetaD_dLam") = int_expbetaD_dLam
+        Named("iter") = step
     );
 }

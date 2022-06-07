@@ -248,7 +248,7 @@ ConstantF_parallel_Newtonest = function(init_parameters, time, event, IV,
   # setting
   #----------------------------------------------------
   
-  fn_jac_calculate = function() {
+    fn_jac_calculate = function() {
   dNt = drop(ifelse(time == stime[j], 1, 0))
   dNt = dNt*event
   Yt = drop(ifelse(time >= stime[j], 1, 0)) 
@@ -320,8 +320,8 @@ ConstantF_parallel_Newtonest = function(init_parameters, time, event, IV,
   res_b3 = -int_expbetaD*D_status[idx,j]
   res_b4 = -(int_D[idx, j]*apply(exp(int_cbetaD)*dNt[idx], 2, sum) - 
               apply(int_cdexpbetaD*(D_status[idx,j]*betaD + Covbeta[idx]), 2, sum))/SY
-  res_b5 = -((apply(int_D[idx, j]*exp(int_cbetaD)*dNt[idx], 2, sum) - 
-              apply(t(int_cdexpbetaD) * (Covbeta[idx]+D_status[idx,j]*betaD), 2, sum) - apply(int_cexpbetaD * D_status[idx, j], 2, sum))*SY - 
+  res_b5 = -((t(int_D[idx, j]*t(exp(betaD*int_D[idx, j])))*dNt[idx] - 
+              apply(t(int_cdexpbetaD) * (Covbeta[idx]+D_status[idx,j]*betaD), 2, sum))*SY - 
               (apply(exp(int_cbetaD)*dNt[idx], 2, sum) - 
               apply(int_cexpbetaD*(Covbeta[idx] + D_status[idx, j]*betaD), 2, sum)) * 
               sum(int_D[idx, j]*exp(betaD*int_D[idx, j])*Yt))/SY^2
@@ -379,6 +379,7 @@ ConstantF_parallel_Newtonest = function(init_parameters, time, event, IV,
     }
     fn = drop(out[, 1])
     H = out[, -1]
+    if(i == 1)print(H)
     
     p = solve(H)%*%fn
     tmp_parameters = init_parameters - p
