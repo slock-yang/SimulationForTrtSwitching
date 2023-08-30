@@ -15,7 +15,9 @@ SEXP integral_est(
     arma::mat D_status,
     arma::vec stime,
     int max_iter,
-    double tol
+    double tol,
+    double eta,
+    double contraction
 )
 {
     int n = time.size();
@@ -25,10 +27,13 @@ SEXP integral_est(
     
     int step;
     bool Convergence;
-    double tmp, tmp_cexpbetaD, tmp_cD, old_cexpbetaD, betaD;
-    arma::vec beta(p), res(n), Covbeta(n), int_cexpbetaD(n), int_cdexpbetaD_1(n), int_cdexpbetaD_2(n), fn(p+1), fn_abs(p+1), SY(k), dSY(k), new_parameters(p+1), diff(p+1);
-    arma::mat int_D(n, k), dNt(n, k), Yt(n, k), int_expbetaD(n, k), int_Lam(n, k), int_dexpbetaD(n, k), int_dexpbetaD_Lam(n, k), int_expbetaD_dLam(n, k), int_expbetaD_dLam_dalpha(n, p), dPhi(n, p+1), Hessian(p+1, p+1), inv_Hessian(p+1, p+1);
-
+    double tmp, tmp_cexpbetaD, tmp_cD, old_cexpbetaD, betaD, Asyvar, hatsigma;
+    arma::vec beta(p), res(n), Covbeta(n), int_cexpbetaD(n), int_cdexpbetaD_1(n), int_cdexpbetaD_2(n), fn(p+1), prev_fn(p+1), fn_abs(p+1), SY(k), dSY(k), new_parameters(p+1), diff(p+1), pk(p+1);
+    arma::mat int_D(n, k), dNt(n, k), Yt(n, k), int_expbetaD(n, k), int_Lam(n, k), int_dexpbetaD(n, k), int_dexpbetaD_Lam(n, k), int_expbetaD_dLam(n, k), int_expbetaD_dLam_dalpha(n, p), dPhi(n, p+1), Hessian(p+1, p+1), prev_Hessian(p+1, p+1), inv_Hessian(p+1, p+1);
+    arma::mat pk_mat(p+1, 1), H_com(1, 1);
+    double H_com_val, bktrkg;
+    arma::vec fn_2(p+1), prev_fn_2(p+1);
+    
     for (int iter = 0; iter < max_iter; iter++)
     {
         res.zeros(); Covbeta.zeros(); int_cexpbetaD.zeros(); int_Lam.zeros(); int_cdexpbetaD_1.zeros(); int_cdexpbetaD_2.zeros();
@@ -218,13 +223,30 @@ SEXP integral_est(
                 }
             }
         }
+        
+        if (iter > 0)
+        {
+            pk_mat.col(0) = pk;
+            H_com = pk_mat.t()*Hessian*pk_mat;
+            H_com_val = H_com(0, 0);
+            fn_2 = arma::pow(fn, 2);
+            prev_fn_2 = arma::pow(prev_fn, 2);
+            bktrkg = (arma::sum(fn_2)/2 - arma::sum(prev_fn_2)/2)/(arma::dot(pk, fn) + H_com_val);
+            if(bktrkg > eta)
+            {
+                init_parameters = init_parameters - (1 - contraction) * pk;
+                if (iter >= max_iter - 1) Convergence = false;
+                continue;
+            }
+        }
+        
         // arma::arma_print(fn);
         // arma::arma_print(Hessian);
         // arma::arma_print(dNt);
         // if(iter == 0)
         //     arma::arma_print(dPhi);
-        
-        new_parameters = init_parameters - arma::solve(Hessian, fn);
+        pk = -arma::solve(Hessian, fn);
+        new_parameters = init_parameters + pk;
         fn_abs = arma::abs(fn);
         diff = arma::abs(new_parameters - init_parameters);
         if(arma::sum(fn_abs) < tol || arma::sum(diff) < (tol * tol))
@@ -240,10 +262,24 @@ SEXP integral_est(
             Convergence = false;
         }
     }
+    
+    // asymptotic variance
+    Asyvar = 0.0;
+    hatsigma = 0.0;
+    
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < k; j++)
+        {
+            hatsigma = hatsigma + ((IV_c[i] * IV_c[i])*exp(2*int_D(i, j)*betaD)*dNt(i, j));
+        }
+    }
+    Asyvar = hatsigma / (Hessian(0, 0)*Hessian(0, 0));
 
     return Rcpp::List::create(
         Named("x") = init_parameters,
         Named("Convergence") = Convergence,
-        Named("iter") = step
+        Named("iter") = step,
+        Named("var") = Asyvar
     );
 }
