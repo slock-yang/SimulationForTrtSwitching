@@ -126,7 +126,7 @@ sim2_data = function(nrep = 1000, n = 800, p = 10,
 }
 
 
-sim2 = function(nrep = 1000, n = 800, p = 10,
+sim = function(nrep = 1000, n = 800, p = 10,
                 max_t = 6,
                 newdir = "",
                 root = ""){

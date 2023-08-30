@@ -265,43 +265,6 @@ coef(out)
 
 # Simulation --------------------------------------------------------------
 
-
-
-
-
-
-
-
-sim2_data(nrep = 1000, n = 800, newdir = "Setting2")
-sim2_data(nrep = 1000, n = 1600, newdir = "Setting2")
-out = sim2(nrep = 1000, n = 800, newdir = "Setting2")
-out2 = sim2(nrep = 1000, n = 1600, newdir = "Setting2")
-
-sim2_droutcome_data(nrep = 1000, n = 800, newdir = "Setting2outcome")
-sim2_droutcome_data(nrep = 1000, n = 1600, newdir = "Setting2outcome")
-out = sim2(nrep = 1000, n = 800, newdir = "Setting2outcome")
-out2 = sim2(nrep = 1000, n = 1600, newdir = "Setting2outcome")
-
-
-sim2_drz_data(nrep = 1000, n = 800, newdir = "Setting2z")
-sim2_drz_data(nrep = 1000, n = 1600, newdir = "Setting2z")
-out = sim2(nrep = 1000, n = 800, newdir = "Setting2z")
-out2 = sim2(nrep = 1000, n = 1600, newdir = "Setting2z")
-
-apply(out$dr[, out$Con], 1, mean)
-apply(out$dr[, out$Con], 1, sd)
-apply(out$ahaz, 1, mean)
-apply(out$ahaz, 1, sd)
-apply(out$delete, 1, mean)
-apply(out$delete, 1, sd)
-apply(out$itt, 1, mean)
-apply(out$itt, 1, sd)
-apply(out$timeVar, 1, mean)
-apply(out$timeVar, 1, sd)
-
-
-
-
 for (nn in c(800, 1600, 3200)) {
   for(ii in c("", "outcome", "IV")){
     for (zz in c("s1", "s2")) {
