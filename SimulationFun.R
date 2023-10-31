@@ -1,23 +1,3 @@
-# Both settings' functions, sim_data and sim2_data, are introduced in this file (max_time = 6)
-# with inputs:
-#
-#   nrep:       Repetition
-#   n:          Sample size
-#   p:          Numbers of confounders, including an unmeasured unconfounders
-#   beta:       The survival parameters of confounders
-#   alpha:      The switching model parameters of confounders
-#   gamma:      The propensity score parameters of confounders
-#   nu:         The intercept of switching model, tuning switching rate
-#   trans:      Specification of survival model, where the default value is linear model
-#   transZ:     Specification of propensity score
-#   json_save:  If true, the data will be written into newdir
-#   newdir:     The directory data is written in
-#   root:       The workpath
-#
-# and outputs:
-#
-#   Censoring rate, overall switching rate and switching rate from each side
-
 
 
 
@@ -57,8 +37,15 @@ sim_data = function(nrep = 1000, n = 800, p = 10,
     C = rexp(n)/(0.1 + Cov[, 1:(p-1)] %*% rep(0.05, p-1))
     W = ifelse(as.logical(Z), rexp(n)/(0.5*(nu + Z + Cov %*% alpha)),
                rexp(n)/(0.5*(nu - (1 - Z) + Cov %*% alpha)))
+    W_copy = W
     W[W <= 0] = Inf
-    T_D = nleqslv(rep(0, n), F_time, w = W, z = Z, Cov = Cov, uni = runif(n))$x
+    W_copy[W_copy <= 0] = 0
+    # T_D = nleqslv(rep(0, n), F_time, w = W, z = Z, Cov = Cov, uni = runif(n))$x
+    T_D = rexp(n)/(0.25 + 0.1*Z + trans(Cov %*% beta))
+    T_D_ind = T_D >= W
+    if(any(T_D_ind)){
+      T_D[T_D_ind] = ((T_D*(0.25 + 0.1*Z + trans(Cov %*% beta))- (0.1 * Z * W_copy - 0.1* (1-Z)*W_copy))/(0.25 + 0.1*(1-Z) + trans(Cov %*% beta)))[T_D_ind]
+    }
     dat = cbind(Cov, Z, T_D, W, C)
     if(json_save) write_json(dat, paste0(root, newdir, n, "/", kk, ".json"))
     if(kk %% 100 == 0) cat("iter", kk, "\n")
@@ -116,17 +103,28 @@ sim2_data = function(nrep = 1000, n = 800, p = 10,
     Cov = matrix(runif(n*p), ncol = p, nrow = n)
     Z_p = expit(transZ(Cov[, 1:(p-1)] %*% gamma))
     Z = rbinom(n, 1, Z_p)
-    T0 = F_t0(n, Cov, beta)
-    T1 = nleqslv::nleqslv(rep(0, n), Rank_preserving, 
-                          t0 = T0, w = Inf, Cov = Cov, Z = 1,
-                          beta = beta)$x
+    r_T_D = rexp(n)
+    T0 = r_T_D/(0.25 + trans(Cov %*% beta))
+    # T1 = nleqslv::nleqslv(rep(0, n), Rank_preserving, 
+    #                       t0 = T0, w = Inf, Cov = Cov, Z = 1,
+    #                       beta = beta)$x
+    T1 = r_T_D/(0.25 + 0.1 + trans(Cov %*% beta))
     
     W = ifelse(as.logical(Z), rexp(n)/(exp(-T1)*(nu + Z + Cov %*% alpha)),
                rexp(n)/(exp(-T0)*(nu - (1 - Z) + Cov %*% alpha)))
+    W_copy = W
     W[W <= 0] = Inf
+    W_copy[W_copy <= 0] = 0
     C = rexp(n)/(0.1 + Cov[, 1:(p-1)] %*% rep(0.05, p-1))
-    T_D = nleqslv(rep(0, n), Rank_preserving, 
-                  t0 = T0, w = W, Cov = Cov, Z = Z, beta = beta)$x
+    # T_D = nleqslv(rep(0, n), Rank_preserving, 
+    #               t0 = T0, w = W, Cov = Cov, Z = Z, beta = beta)$x
+    T_D = r_T_D/(0.25 + 0.1 * Z + trans(Cov %*% beta))
+    T_D_ind = T_D >= W
+    if(any(T_D_ind)){
+      T_D[T_D_ind] = ((T_D*(0.25 + 0.1*Z + trans(Cov %*% beta))- (0.1 * Z * W_copy - 0.1* (1-Z)*W_copy))/(0.25 + 0.1*(1-Z) + trans(Cov %*% beta)))[T_D_ind]
+    }
+    
+    
     dat = cbind(Cov, Z, T_D, W, C)
     if(json_save) write_json(dat, paste0(root, newdir, n, "/", kk, ".json"))
     if(kk %% 100 == 0) cat("iter", kk, "\n")
@@ -149,23 +147,20 @@ sim2_data = function(nrep = 1000, n = 800, p = 10,
 }
 
 
-
-
-
-# Conduct simulation from generated data
-# This simulation will apply recensoring, deleting, ITT analysis, aalen model and our proposed doubly robust estimator.
-# When applying DR estimator, the time to event will be discretized into a grid of 0.01.
-
-sim = function(nrep = 1000, n = 800, p = 10,
+sim2 = function(nrep = 1000, n = 800, p = 10,
                 max_t = 6,
                 newdir = "",
                 root = ""){
   out1 = NULL
+  out1_var = NULL
   out2 = NULL
   out2_var = NULL
   out3 = NULL
+  out3_var = NULL
   out4 = NULL
+  out4_var = NULL
   out5 = NULL
+  out5_var = NULL
   Con = vector(length = nrep)
   for (kk in 1:nrep) {
     dat = read_json(paste0(root, newdir, n, "/", kk, ".json"), 
@@ -195,7 +190,7 @@ sim = function(nrep = 1000, n = 800, p = 10,
     }
     
     mod5  = aalen(Surv(start_time, end_time, event) ~ const(treatment) + const(X1) + const(X2) +
-                   const(X3) + const(X4) + const(X5) + const(X6) + const(X7) + const(X8) + const(X9), data = adat, max.time = 6, id = adat$id)
+                    const(X3) + const(X4) + const(X5) + const(X6) + const(X7) + const(X8) + const(X9), data = adat, max.time = 6, id = adat$id)
     
     # W = 0.9 * T0
     
@@ -228,9 +223,13 @@ sim = function(nrep = 1000, n = 800, p = 10,
                             IV = Z, Covariates = Cov[, 1:(p-1)], Covariates2 = Cov, 
                             D_status = D_status, stime = stime)
     out1 = cbind(out1, coef(mod1))
+    out1_var = cbind(out1_var, diag(vcov(mod1)))
     out3 = cbind(out3, coef(mod3))
+    out3_var = cbind(out3_var, diag(vcov(mod3)))
     out4 = cbind(out4, coef(mod4))
+    out4_var = cbind(out4_var, diag(vcov(mod4)))
     out5 = cbind(out5, coef(mod5)[, 1])
+    out5_var = cbind(out5_var, coef(mod5)[, 2]^2)
     out2 = cbind(out2, mod2$x)
     out2_var = c(out2_var, mod2$var)
     Con[kk] = mod2$Convergence
@@ -238,9 +237,13 @@ sim = function(nrep = 1000, n = 800, p = 10,
         "\t", "]]\n")
   }
   return(list(ahaz = out1,
+              ahaz_var = out1_var,
               delete = out3,
+              delete_var = out3_var,
               itt = out4,
+              itt_var = out4_var,
               timeVar = out5,
+              timeVar_var = out5_var,
               dr = out2,
               dr_var = out2_var,
               Con = Con))
